@@ -1,0 +1,24 @@
+﻿@{
+    ViewData["Title"] = "Proje Simülasyonu";
+}
+
+<div class="container mt-5">
+    <h2 class="text-primary border-bottom pb-2">Akıllı Lojistik Sistemi - Tasarım Desenleri Testi</h2>
+
+    <div class="card shadow-sm mt-4">
+        <div class="card-header bg-dark text-white">
+            <strong>Sistem Yürütme Logları</strong>
+        </div>
+        <ul class="list-group list-group-flush" style="font-family: Consolas, monospace;">
+            @if (ViewBag.Logs != null)
+            {
+                foreach (var log in ViewBag.Logs)
+                {
+                    <li class="list-group-item @(log.Contains("BAŞARILI") ? "list-group-item-danger" : "") @(log.Contains("✅") ? "list-group-item-success" : "")">
+                        @log
+                    </li>
+                }
+            }
+        </ul>
+    </div>
+</div>

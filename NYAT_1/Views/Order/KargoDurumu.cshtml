@@ -1,0 +1,43 @@
+﻿@{
+    ViewData["Title"] = "Kurye Paneli";
+}
+
+<div class="container mt-4">
+    <div class="card border-info shadow">
+        <div class="card-header bg-info text-white">
+            <h3 class="mb-0">🚚 Kurye İşlem Paneli</h3>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">Bu sayfaya sadece <strong>Admin</strong> ve <strong>Kurye</strong> yetkisine sahip kullanıcılar erişebilir.</p>
+
+            <table class="table table-hover mt-3">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Sipariş No</th>
+                        <th>Müşteri Bilgisi</th>
+                        <th>Mevcut Durum</th>
+                        <th>İşlem (State Testi)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>#1001</td>
+                        <td>Sakarya / Serdivan</td>
+                        <td><span class="badge badge-primary">Kargoda</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="alert('State Deseni: Sipariş Teslim Edildi statüsüne geçirildi.')">Teslim Edildi İşaretle</button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>#1002</td>
+                        <td>Kocaeli / İzmit</td>
+                        <td><span class="badge badge-warning">Hazırlanıyor</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-info" onclick="alert('State Deseni: Sipariş Kargoya Verildi statüsüne geçirildi.')">Araca Yüklendi</button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
