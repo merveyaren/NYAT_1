@@ -9,18 +9,21 @@
         </div>
         <div class="card-body p-4">
             <form asp-controller="Order" asp-action="ProcessOrder" method="post">
-                
+
                 <div class="row">
-                    <div class="col-md-8 mb-4">
+                    <div class="col-md-4 mb-4">
                         <label class="font-weight-bold">Satın Alınacak Ürün</label>
                         <select name="productName" id="productSelect" class="form-control form-control-lg" required onchange="calculateTotal()">
-                            <option value="" data-price="0">-- Lütfen bir ürün seçin --</option>
+                            <option value="" data-price="0" data-weight="0">-- Ürün Seçin --</option>
                             @if (ViewBag.Products != null)
                             {
                                 foreach (var product in ViewBag.Products)
                                 {
-                                    <option value="@product.Name" data-price="@product.Price" disabled="@(product.Stock <= 0 ? "disabled" : null)">
-                                        @product.Name - (@product.Price TL) - Stok: @product.Stock
+                                    <option value="@product.Name"
+                                            data-price="@Convert.ToString(product.Price, System.Globalization.CultureInfo.InvariantCulture)"
+                                            data-weight="@Convert.ToString(product.Weight, System.Globalization.CultureInfo.InvariantCulture)"
+                                            disabled="@(product.Stock <= 0 ? "disabled" : null)">
+                                        @product.Name - (@product.Price TL) - @product.Weight KG
                                     </option>
                                 }
                             }
@@ -32,9 +35,14 @@
                         <input type="number" name="quantity" id="quantityInput" class="form-control form-control-lg" value="1" min="1" required oninput="calculateTotal()">
                     </div>
 
+                    <div class="col-md-4 mb-4">
+                        <label class="font-weight-bold">Teslimat Mesafesi (KM)</label>
+                        <input type="number" name="distance" id="distanceInput" class="form-control form-control-lg" value="10" min="1" required oninput="calculateTotal()">
+                    </div>
+
                     <div class="col-12 mb-4">
                         <div class="alert alert-dark d-flex justify-content-between align-items-center shadow-sm">
-                            <h4 class="mb-0">Toplam Tutar:</h4>
+                            <h4 class="mb-0">Tahmini Toplam Tutar:</h4>
                             <h4 class="mb-0 text-success"><span id="totalPriceDisplay">0.00</span> TL</h4>
                         </div>
                     </div>
@@ -42,25 +50,63 @@
 
                 <script>
                     function calculateTotal() {
-                        const select = document.getElementById('productSelect');
-                        const quantity = document.getElementById('quantityInput').value;
-                        const selectedOption = select.options[select.selectedIndex];
-                        
-                        const price = parseFloat(selectedOption.getAttribute('data-price')) || 0;
-                        
-                        const insuranceCheck = document.getElementById('chkInsurance');
-                        let extra = 0;
-                        if (insuranceCheck && insuranceCheck.checked) {
-                            extra = 50;
-                        }
+                        try {
+                            const select = document.getElementById('productSelect');
+                            const qtyInput = document.getElementById('quantityInput');
+                            const distInput = document.getElementById('distanceInput');
+                            const cargoSelect = document.getElementById('cargoSelect'); // Kargo seçimini yakala
 
-                        const total = (price * quantity) + extra;
-                        document.getElementById('totalPriceDisplay').innerText = total.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+                            if (!select || !qtyInput || !distInput || !cargoSelect) return;
+
+                            const quantity = parseInt(qtyInput.value) || 0;
+                            const distance = parseFloat(distInput.value) || 0;
+
+                            if (select.selectedIndex <= 0) {
+                                document.getElementById('totalPriceDisplay').innerText = "0.00";
+                                return;
+                            }
+
+                            const selectedOption = select.options[select.selectedIndex];
+                            const unitPrice = parseFloat(selectedOption.getAttribute('data-price')) || 0;
+                            let unitWeight = parseFloat(selectedOption.getAttribute('data-weight'));
+
+                            if (unitWeight === 0 || isNaN(unitWeight)) {
+                                unitWeight = 1.0;
+                            }
+
+                            const totalWeight = unitWeight * quantity;
+                            const cargoCompany = cargoSelect.value;
+                            let shippingCost = 0;
+
+                            // ADAPTER KURALLARININ ARAYÜZ SİMÜLASYONU
+                            if (cargoCompany === "Yurtici") {
+                                // Yurtiçi Kargo Formülü (MESAFE YOK!)
+                                shippingCost = (totalWeight * 2.5) + 20;
+                            }
+                            else if (cargoCompany === "Aras") {
+                                // Aras Kargo Formülü
+                                shippingCost = (totalWeight * 1.5) + (distance * 0.5);
+                            }
+                            else if (cargoCompany === "Global") {
+                                // Global Express Formülü
+                                shippingCost = (totalWeight * 20) + (distance * 1.5);
+                            }
+
+                            const insuranceCheck = document.getElementById('chkInsurance');
+                            let insuranceExtra = (insuranceCheck && insuranceCheck.checked) ? 50 : 0;
+
+                            const total = (unitPrice * quantity) + shippingCost + insuranceExtra;
+
+                            document.getElementById('totalPriceDisplay').innerText = total.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                        } catch (e) {
+                            console.error("Hesaplama sırasında hata oluştu:", e);
+                        }
                     }
 
                     document.addEventListener('DOMContentLoaded', function() {
                         const chk = document.getElementById('chkInsurance');
                         if(chk) chk.addEventListener('change', calculateTotal);
+                        calculateTotal();
                     });
                 </script>
 
@@ -75,10 +121,11 @@
 
                     <div class="col-md-4 mb-4">
                         <label class="font-weight-bold">Kargo Firması</label>
-                        <select name="cargoCompany" class="form-control">
-                            <option value="Yurtici">Yurtiçi Kargo</option>
-                            <option value="Aras">Aras Kargo</option>
+                        <select name="cargoCompany" id="cargoSelect" class="form-control" onchange="calculateTotal()">
+                            <option value="Yurtici">Yurtiçi Kargo (Sadece Ağırlık)</option>
+                            <option value="Aras">Aras Kargo (Ağırlık + Mesafe)</option>
                             
+                        </select>
                     </div>
 
                     <div class="col-md-4 mb-4">

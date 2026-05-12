@@ -11,5 +11,6 @@ namespace NYAT_1.Models
         public int Stock { get; set; }
         public decimal Price { get; set; }
         public string Components { get; set; }
+        public double Weight { get; set; }
     }
 }

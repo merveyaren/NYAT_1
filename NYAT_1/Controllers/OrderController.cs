@@ -42,11 +42,13 @@ namespace NYAT_1.Controllers
             return View(myOrders);
         }
 
+        // DİKKAT: 'double distance' parametresi eklendi!
         [Authorize(Roles = "Musteri, Admin")]
         [HttpPost]
-        public IActionResult ProcessOrder(string productName, int quantity, string paymentMethod, string cargoCompany, bool useInsurance)
+        public IActionResult ProcessOrder(string productName, int quantity, string paymentMethod, string cargoCompany, bool useInsurance, double distance)
         {
             var dbProduct = _context.Products.FirstOrDefault(p => p.Name == productName);
+            decimal finalPrice = 0;
 
             if (dbProduct != null && dbProduct.Stock >= quantity)
             {
@@ -58,7 +60,9 @@ namespace NYAT_1.Controllers
                 stockManager.DecreaseStock(quantity);
                 dbProduct.Stock -= quantity;
 
-                // DESEN 2: COMPOSITE - Karmaşık Ürün Alt Parça Düşümü (Dinamik)
+                // DESEN 2: COMPOSITE - Karmaşık Ürün Alt Parça Düşümü ve AĞIRLIK HESAPLAMA
+                double totalWeightPerUnit = dbProduct.Weight; // Ana ürünün kendi ağırlığı
+
                 if (dbProduct.ProductType == "Karmasik" && !string.IsNullOrEmpty(dbProduct.Components))
                 {
                     var componentNames = dbProduct.Components
@@ -72,50 +76,60 @@ namespace NYAT_1.Controllers
                         if (compProduct != null && compProduct.Stock >= quantity)
                         {
                             compProduct.Stock -= quantity;
+                            totalWeightPerUnit += compProduct.Weight; // Alt parçanın ağırlığını da ekliyoruz!
                         }
                     }
                 }
+
+                // Siparişin toplam ağırlığı
+                double totalOrderWeight = totalWeightPerUnit * quantity;
                 _context.SaveChanges();
+
+                // DESEN 4 & 5: ADAPTER VE DECORATOR - Kargo Firması Seçimi ve Fiyat Hesaplama
+                ICargoService cargo;
+                if (cargoCompany == "Aras")
+                    cargo = new ArasCargoAdapter();
+                else
+                    cargo = new YurticiCargoAdapter();
+
+                if (useInsurance)
+                    cargo = new InsuranceDecorator(cargo);
+
+                // Dinamik Ağırlık ve Mesafe ile Kargo Ücretini Hesaplıyoruz!
+                decimal cargoCost = cargo.CalculatePrice(totalOrderWeight, distance);
+
+                // Toplam Fiyat (Ürünler + Kargo)
+                finalPrice = (dbProduct.Price * quantity) + cargoCost;
+
+                // DESEN 3: STRATEGY - Ödeme Yöntemi
+                OrderContext orderContext = new OrderContext { OrderId = new Random().Next(1000, 9999), TotalAmount = finalPrice };
+                if (paymentMethod == "CreditCard")
+                    orderContext.SetPaymentStrategy(new CreditCardPayment("4321-xxxx", "123"));
+                else
+                    orderContext.SetPaymentStrategy(new BankTransferPayment("TR00..."));
+
+                orderContext.ProcessPayment();
+
+                // SİPARİŞİ VERİTABANINA KAYDETME
+                var newOrder = new OrderRecord
+                {
+                    CustomerEmail = User.Identity.Name,
+                    ProductName = productName,
+                    Quantity = quantity,
+                    TotalPrice = finalPrice,
+                    Status = "Beklemede",
+                    OrderDate = DateTime.Now
+                };
+                _context.Orders.Add(newOrder);
+                _context.SaveChanges();
+
+                // Sonuç ekranı için veriler
+                ViewBag.FinalPrice = finalPrice;
+                ViewBag.Order = orderContext;
+                ViewBag.ProductName = productName;
+                ViewBag.Quantity = quantity;
+                ViewBag.CargoInfo = $"Firma: {cargoCompany} | Takip: {cargo.GenerateTrackingNumber()} | Kargo Ücreti: {cargoCost:F2} TL (Ağırlık: {totalOrderWeight} KG, Mesafe: {distance} KM)";
             }
-
-            // DESEN 3: STRATEGY - Ödeme Yöntemi
-            OrderContext orderContext = new OrderContext { OrderId = new Random().Next(1000, 9999), TotalAmount = 500 };
-            if (paymentMethod == "CreditCard")
-                orderContext.SetPaymentStrategy(new CreditCardPayment("4321-xxxx", "123"));
-            else
-                orderContext.SetPaymentStrategy(new BankTransferPayment("TR00..."));
-
-            orderContext.ProcessPayment();
-
-            // DESEN 4: ADAPTER - Kargo Firması Seçimi (Senin API sınıflarınla çalışan kısım)
-            ICargoService cargo;
-            if (cargoCompany == "Aras")
-                cargo = new ArasCargoAdapter();
-            else
-                cargo = new YurticiCargoAdapter();
-
-            // DESEN 5: DECORATOR - Kargo Sigortası
-            if (useInsurance)
-                cargo = new InsuranceDecorator(cargo);
-
-            // SİPARİŞİ VERİTABANINA KAYDETME (State başlangıcı: Beklemede)
-            var newOrder = new OrderRecord
-            {
-                CustomerEmail = User.Identity.Name,
-                ProductName = productName,
-                Quantity = quantity,
-                TotalPrice = 500,
-                Status = "Beklemede",
-                OrderDate = DateTime.Now
-            };
-            _context.Orders.Add(newOrder);
-            _context.SaveChanges();
-
-            // Sonuç ekranı için veriler
-            ViewBag.Order = orderContext;
-            ViewBag.ProductName = productName;
-            ViewBag.Quantity = quantity;
-            ViewBag.CargoInfo = $"Firma: {cargoCompany} | Takip: {cargo.GenerateTrackingNumber()} | Ücret: {cargo.CalculatePrice(2.0, 100)} TL";
 
             return View("OrderResult");
         }
@@ -127,7 +141,6 @@ namespace NYAT_1.Controllers
             var dbOrder = _context.Orders.FirstOrDefault(o => o.Id == orderId);
             if (dbOrder != null)
             {
-                // DESEN: STATE (Durum) Simülasyonu
                 try
                 {
                     if (dbOrder.Status == "Kargoda" || dbOrder.Status == "Teslim Edildi")
@@ -159,9 +172,10 @@ namespace NYAT_1.Controllers
             return View();
         }
 
+        // DİKKAT: 'double weight' parametresi eklendi!
         [Authorize(Roles = "DepoGorevlisi, Admin")]
         [HttpPost]
-        public IActionResult AddNewProduct(string productType, string productName, int stock, decimal price, List<string> selectedComponents)
+        public IActionResult AddNewProduct(string productType, string productName, int stock, decimal price, double weight, List<string> selectedComponents)
         {
             // DESEN 6: FACTORY METHOD
             ProductFactory factory = new ProductFactory();
@@ -177,6 +191,7 @@ namespace NYAT_1.Controllers
                 ProductType = productType,
                 Stock = stock,
                 Price = price,
+                Weight = weight, // Ağırlık veritabanına kaydediliyor
                 Components = componentsString
             };
 
