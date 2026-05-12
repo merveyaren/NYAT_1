@@ -1,16 +1,17 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using NYAT_1.Models;
-using NYAT_1.Data;
-using NYAT_1.Core.Interfaces;
-using NYAT_1.Patterns.Creational.Factory;
-using NYAT_1.Patterns.Behavioral.Strategies;
-using NYAT_1.Patterns.Structural.Adapters;
-using NYAT_1.Patterns.Structural.Decorators;
-using NYAT_1.Patterns.Behavioral.Observer;
-using Microsoft.AspNetCore.Authorization;
+﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using NYAT_1.Core.Interfaces;
+using NYAT_1.Data;
+using NYAT_1.Models;
+using NYAT_1.Patterns.Behavioral.Observer;
+using NYAT_1.Patterns.Behavioral.Strategies;
+using NYAT_1.Patterns.Creational.Factory;
+using NYAT_1.Patterns.Creational.Singleton;
+using NYAT_1.Patterns.Structural.Adapters;
+using NYAT_1.Patterns.Structural.Decorators;
 
 namespace NYAT_1.Controllers
 {
@@ -42,7 +43,6 @@ namespace NYAT_1.Controllers
             return View(myOrders);
         }
 
-        // DİKKAT: 'double distance' parametresi eklendi!
         [Authorize(Roles = "Musteri, Admin")]
         [HttpPost]
         public IActionResult ProcessOrder(string productName, int quantity, string paymentMethod, string cargoCompany, bool useInsurance, double distance)
@@ -131,6 +131,9 @@ namespace NYAT_1.Controllers
                 ViewBag.CargoInfo = $"Firma: {cargoCompany} | Takip: {cargo.GenerateTrackingNumber()} | Kargo Ücreti: {cargoCost:F2} TL (Ağırlık: {totalOrderWeight} KG, Mesafe: {distance} KM)";
             }
 
+            // SINGLETON LOG (Veritabanına Kayıt)
+            SystemLogger.GetInstance().LogToDb(HttpContext.RequestServices, $"SİPARİŞ ONAYLANDI: {productName} x {quantity}. Toplam Tutar: {finalPrice} TL. Kargo: {cargoCompany}", User.Identity.Name ?? "System");
+
             return View("OrderResult");
         }
 
@@ -151,6 +154,9 @@ namespace NYAT_1.Controllers
                     dbOrder.Status = "İptal Edildi";
                     _context.SaveChanges();
                     TempData["SuccessMessage"] = "Siparişiniz başarıyla iptal edildi.";
+
+                    // SINGLETON LOG
+                    SystemLogger.GetInstance().LogToDb(HttpContext.RequestServices, $"SİPARİŞ İPTAL EDİLDİ: #{dbOrder.Id}", User.Identity.Name ?? "System");
                 }
                 catch (Exception ex)
                 {
@@ -172,7 +178,6 @@ namespace NYAT_1.Controllers
             return View();
         }
 
-        // DİKKAT: 'double weight' parametresi eklendi!
         [Authorize(Roles = "DepoGorevlisi, Admin")]
         [HttpPost]
         public IActionResult AddNewProduct(string productType, string productName, int stock, decimal price, double weight, List<string> selectedComponents)
@@ -191,12 +196,15 @@ namespace NYAT_1.Controllers
                 ProductType = productType,
                 Stock = stock,
                 Price = price,
-                Weight = weight, // Ağırlık veritabanına kaydediliyor
+                Weight = weight,
                 Components = componentsString
             };
 
             _context.Products.Add(newEntity);
             _context.SaveChanges();
+
+            // SINGLETON LOG (Veritabanına Kayıt)
+            SystemLogger.GetInstance().LogToDb(HttpContext.RequestServices, $"YENİ ÜRÜN EKLENDİ: {productName} (Tip: {productType}, Stok: {stock}, Fiyat: {price} TL)", User.Identity.Name ?? "System");
 
             return RedirectToAction("StokYonetimi");
         }
@@ -211,17 +219,42 @@ namespace NYAT_1.Controllers
                 dbProduct.Stock += amount;
                 _context.SaveChanges();
             }
+
+            // SINGLETON LOG (Veritabanına Kayıt)
+            SystemLogger.GetInstance().LogToDb(HttpContext.RequestServices, $"STOK ARTTIRILDI: {productName} (+{amount} adet)", User.Identity.Name ?? "System");
+
             return RedirectToAction("StokYonetimi");
         }
 
         // --------------------------------------------------------
-        // 3. KURYE İŞLEMLERİ
+        // 3. KURYE İŞLEMLERİ (State ve Singleton Deseni)
         // --------------------------------------------------------
 
         [Authorize(Roles = "Kurye, Admin")]
         public IActionResult KargoDurumu()
         {
-            return View();
+            var allOrders = _context.Orders.OrderByDescending(o => o.OrderDate).ToList();
+            return View(allOrders);
+        }
+
+        [Authorize(Roles = "Kurye, Admin")]
+        [HttpPost]
+        public IActionResult UpdateOrderStatus(int orderId, string newStatus)
+        {
+            var dbOrder = _context.Orders.FirstOrDefault(o => o.Id == orderId);
+
+            if (dbOrder != null)
+            {
+                string oldStatus = dbOrder.Status;
+                dbOrder.Status = newStatus;
+
+                _context.SaveChanges();
+
+                // DESEN: SINGLETON - Sistem genelindeki tek log nesnesini çağır ve veritabanına yaz!
+                SystemLogger.GetInstance().LogToDb(HttpContext.RequestServices, $"Sipariş #{dbOrder.Id} durumu güncellendi: '{oldStatus}' -> '{newStatus}'", User.Identity.Name ?? "System");
+            }
+
+            return RedirectToAction("KargoDurumu");
         }
     }
 }

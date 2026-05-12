@@ -15,5 +15,6 @@ namespace NYAT_1.Data
         public DbSet<ProductEntity> Products { get; set; }
         // Products tablosunun hemen altına bunu ekle:
         public DbSet<OrderRecord> Orders { get; set; }
+        public DbSet<Loglar> Logs { get; set; }
     }
 }

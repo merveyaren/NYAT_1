@@ -1,43 +1,75 @@
-﻿@{
+﻿@model IEnumerable<NYAT_1.Models.OrderRecord>
+@{
     ViewData["Title"] = "Kurye Paneli";
 }
 
 <div class="container mt-4">
-    <div class="card border-info shadow">
-        <div class="card-header bg-info text-white">
-            <h3 class="mb-0">🚚 Kurye İşlem Paneli</h3>
-        </div>
-        <div class="card-body">
-            <p class="text-muted">Bu sayfaya sadece <strong>Admin</strong> ve <strong>Kurye</strong> yetkisine sahip kullanıcılar erişebilir.</p>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-info"><i class="fas fa-truck"></i> Kurye Operasyon Paneli</h2>
+        <span class="badge badge-warning p-2">📦 State (Durum) Yönetimi</span>
+    </div>
 
-            <table class="table table-hover mt-3">
-                <thead class="thead-light">
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <table class="table table-hover table-striped mb-0">
+                <thead class="bg-dark text-white">
                     <tr>
-                        <th>Sipariş No</th>
-                        <th>Müşteri Bilgisi</th>
+                        <th>Sipariş ID</th>
+                        <th>Tarih</th>
+                        <th>Müşteri Email</th>
+                        <th>Ürün</th>
                         <th>Mevcut Durum</th>
-                        <th>İşlem (State Testi)</th>
+                        <th>Durum Güncelle (State Transition)</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr>
-                        <td>#1001</td>
-                        <td>Sakarya / Serdivan</td>
-                        <td><span class="badge badge-primary">Kargoda</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-success" onclick="alert('State Deseni: Sipariş Teslim Edildi statüsüne geçirildi.')">Teslim Edildi İşaretle</button>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td>#1002</td>
-                        <td>Kocaeli / İzmit</td>
-                        <td><span class="badge badge-warning">Hazırlanıyor</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-info" onclick="alert('State Deseni: Sipariş Kargoya Verildi statüsüne geçirildi.')">Araca Yüklendi</button>
-                        </td>
-                    </tr>
+                    @if (Model != null && Model.Any())
+                    {
+                        foreach (var order in Model)
+                        {
+                            <tr>
+                                <td class="align-middle font-weight-bold">#@order.Id</td>
+                                <td class="align-middle">@order.OrderDate.ToString("dd.MM.yyyy HH:mm")</td>
+                                <td class="align-middle">@order.CustomerEmail</td>
+                                <td class="align-middle">@order.ProductName (x@order.Quantity)</td>
+                                <td class="align-middle">
+                                    <span class="badge @(order.Status == "Beklemede" ? "badge-secondary" : order.Status == "Kargoda" ? "badge-primary" : order.Status == "Teslim Edildi" ? "badge-success" : order.Status == "İptal Edildi" ? "badge-danger" : "badge-info") p-2">
+                                        @order.Status
+                                    </span>
+                                </td>
+                                <td class="align-middle">
+                                    @if (order.Status == "İptal Edildi" || order.Status == "İade Edildi")
+                                    {
+                                        <span class="text-muted small">İşlem Kapalı</span>
+                                    }
+                                    else
+                                    {
+                                        <form asp-action="UpdateOrderStatus" method="post" class="d-flex">
+                                            <input type="hidden" name="orderId" value="@order.Id" />
+                                            <select name="newStatus" class="form-control form-control-sm mr-2">
+                                                <option value="Onaylandı">Onaylandı</option>
+                                                <option value="Hazırlanıyor">Hazırlanıyor</option>
+                                                <option value="Kargoda">Kargoda</option>
+                                                <option value="Teslim Edildi">Teslim Edildi</option>
+                                                <option value="İade Edildi">İade Sürecine Geç (Hatalı Ürün)</option>
+                                            </select>
+                                            <button type="submit" class="btn btn-sm btn-success">Güncelle</button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr><td colspan="6" class="text-center text-muted p-4">Sistemde henüz bir sipariş bulunmuyor.</td></tr>
+                    }
                 </tbody>
             </table>
         </div>
+    </div>
+
+    <div class="alert alert-secondary mt-3 small">
+        <i class="fas fa-info-circle"></i> <b>Sistem Notu:</b> Yapılan her durum güncellemesi (State değişimi) arka planda <strong>Singleton</strong> deseni kullanılarak oluşturulan SystemLogger nesnesi üzerinden kayıt altına alınmaktadır.
     </div>
 </div>
