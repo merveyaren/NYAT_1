@@ -2,29 +2,42 @@
     ViewData["Title"] = "Sipariş Sonucu";
 }
 
-<div class="container mt-4">
-    <div class="alert alert-success shadow">🎉 Sipariş Başarıyla Oluşturuldu!</div>
-
-    <div class="card shadow">
-        <div class="card-header bg-success text-white">
-            <h5 class="mb-0">Sipariş Detayları</h5>
-        </div>
-        <div class="card-body">
-            <p><strong>Satın Alınan Ürün:</strong> @ViewBag.ProductName</p>
-            <p><strong>Miktar:</strong> @ViewBag.Quantity Adet</p>
-            <p><strong>Kargo Bilgisi:</strong> @ViewBag.CargoInfo</p>
-
-            <hr />
-            <h5>Durum Yönetimi (State Pattern Testi)</h5>
-            <div class="btn-group mt-2">
-                <button class="btn btn-outline-info" onclick="alert('Sipariş Onaylandı statüsüne geçirildi.')">Onayla</button>
-                <button class="btn btn-outline-warning" onclick="alert('Sipariş Hazırlanıyor statüsüne geçirildi.')">Hazırla</button>
-                <button class="btn btn-outline-primary" onclick="alert('Sipariş Kargoya Verildi statüsüne geçirildi.')">Kargoya Ver</button>
-                <button class="btn btn-danger" onclick="alert('HATA YAKALANDI: Kargodaki ürün iptal edilemez! İşlem State deseni tarafından reddedildi.')">İptal Et</button>
-            </div>
-            <p class="mt-3 text-muted small"><i class="fas fa-info-circle"></i> İptal butonuna basıldığında State Pattern kuralları gereği polimorfik olarak hata fırlatılır.</p>
-        </div>
+<div class="container mt-5">
+    <div class="alert alert-success shadow-sm">
+        <h4 class="mb-0">🎉 Sipariş Başarıyla Oluşturuldu!</h4>
     </div>
 
-    <a href="/Order/Index" class="btn btn-link mt-3"><i class="fas fa-arrow-left"></i> Yeni Siparişe Dön</a>
+    <div class="card shadow-lg border-0 mt-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="fas fa-receipt"></i> Sipariş Detayları</h5>
+        </div>
+        <div class="card-body">
+            <ul class="list-group list-group-flush mb-4">
+                <li class="list-group-item">
+                    <strong>Satın Alınan Ürün:</strong> @ViewBag.ProductName
+                </li>
+                <li class="list-group-item">
+                    <strong>Miktar:</strong> @ViewBag.Quantity Adet
+                </li>
+                <li class="list-group-item">
+                    <strong>Ödenen Toplam Tutar:</strong> <span class="text-success font-weight-bold">@ViewBag.FinalPrice TL</span>
+                </li>
+                <li class="list-group-item">
+                    <strong>Kargo Bilgisi:</strong> @ViewBag.CargoInfo
+                </li>
+            </ul>
+
+            <div class="alert alert-info small mb-0">
+                <i class="fas fa-info-circle"></i> <strong>Sistem Notu:</strong> Ödeme işlemi <b>Strategy</b> deseni ile dinamik olarak işlendi ve kargo bilgileri <b>Adapter</b> deseni üzerinden oluşturuldu. Siparişinizin durumunu "Siparişlerim" sekmesinden takip edebilirsiniz.
+            </div>
+        </div>
+        <div class="card-footer bg-light text-center p-3">
+            <a asp-action="MyOrders" class="btn btn-success px-4 mr-2 shadow-sm">
+                <i class="fas fa-shopping-basket"></i> Siparişlerime Git
+            </a>
+            <a asp-action="Index" class="btn btn-outline-secondary px-4 shadow-sm">
+                Yeni Sipariş Ver
+            </a>
+        </div>
+    </div>
 </div>

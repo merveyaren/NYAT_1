@@ -48,90 +48,90 @@ namespace NYAT_1.Controllers
         public IActionResult ProcessOrder(string productName, int quantity, string paymentMethod, string cargoCompany, bool useInsurance, double distance)
         {
             var dbProduct = _context.Products.FirstOrDefault(p => p.Name == productName);
-            decimal finalPrice = 0;
 
-            if (dbProduct != null && dbProduct.Stock >= quantity)
+            // HATA KONTROLÜ 1: Ürün Bulunamadıysa
+            if (dbProduct == null)
             {
-                // DESEN 1: OBSERVER - Stok takibi (Eşik: 5)
-                ProductStockManager stockManager = new ProductStockManager(dbProduct.Name, dbProduct.Stock, 5);
-                stockManager.Attach(new SatinAlmaEmailNotifier());
-                stockManager.Attach(new DepoNotifier());
-
-                stockManager.DecreaseStock(quantity);
-                dbProduct.Stock -= quantity;
-
-                // DESEN 2: COMPOSITE - Karmaşık Ürün Alt Parça Düşümü ve AĞIRLIK HESAPLAMA
-                double totalWeightPerUnit = dbProduct.Weight; // Ana ürünün kendi ağırlığı
-
-                if (dbProduct.ProductType == "Karmasik" && !string.IsNullOrEmpty(dbProduct.Components))
-                {
-                    var componentNames = dbProduct.Components
-                        .Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
-                        .Select(c => c.Trim())
-                        .ToList();
-
-                    foreach (var cName in componentNames)
-                    {
-                        var compProduct = _context.Products.FirstOrDefault(p => p.Name.ToLower() == cName.ToLower());
-                        if (compProduct != null && compProduct.Stock >= quantity)
-                        {
-                            compProduct.Stock -= quantity;
-                            totalWeightPerUnit += compProduct.Weight; // Alt parçanın ağırlığını da ekliyoruz!
-                        }
-                    }
-                }
-
-                // Siparişin toplam ağırlığı
-                double totalOrderWeight = totalWeightPerUnit * quantity;
-                _context.SaveChanges();
-
-                // DESEN 4 & 5: ADAPTER VE DECORATOR - Kargo Firması Seçimi ve Fiyat Hesaplama
-                ICargoService cargo;
-                if (cargoCompany == "Aras")
-                    cargo = new ArasCargoAdapter();
-                else
-                    cargo = new YurticiCargoAdapter();
-
-                if (useInsurance)
-                    cargo = new InsuranceDecorator(cargo);
-
-                // Dinamik Ağırlık ve Mesafe ile Kargo Ücretini Hesaplıyoruz!
-                decimal cargoCost = cargo.CalculatePrice(totalOrderWeight, distance);
-
-                // Toplam Fiyat (Ürünler + Kargo)
-                finalPrice = (dbProduct.Price * quantity) + cargoCost;
-
-                // DESEN 3: STRATEGY - Ödeme Yöntemi
-                OrderContext orderContext = new OrderContext { OrderId = new Random().Next(1000, 9999), TotalAmount = finalPrice };
-                if (paymentMethod == "CreditCard")
-                    orderContext.SetPaymentStrategy(new CreditCardPayment("4321-xxxx", "123"));
-                else
-                    orderContext.SetPaymentStrategy(new BankTransferPayment("TR00..."));
-
-                orderContext.ProcessPayment();
-
-                // SİPARİŞİ VERİTABANINA KAYDETME
-                var newOrder = new OrderRecord
-                {
-                    CustomerEmail = User.Identity.Name,
-                    ProductName = productName,
-                    Quantity = quantity,
-                    TotalPrice = finalPrice,
-                    Status = "Beklemede",
-                    OrderDate = DateTime.Now
-                };
-                _context.Orders.Add(newOrder);
-                _context.SaveChanges();
-
-                // Sonuç ekranı için veriler
-                ViewBag.FinalPrice = finalPrice;
-                ViewBag.Order = orderContext;
-                ViewBag.ProductName = productName;
-                ViewBag.Quantity = quantity;
-                ViewBag.CargoInfo = $"Firma: {cargoCompany} | Takip: {cargo.GenerateTrackingNumber()} | Kargo Ücreti: {cargoCost:F2} TL (Ağırlık: {totalOrderWeight} KG, Mesafe: {distance} KM)";
+                TempData["ErrorMessage"] = "Lütfen geçerli bir ürün seçin.";
+                return RedirectToAction("Index");
             }
 
-            // SINGLETON LOG (Veritabanına Kayıt)
+            // HATA KONTROLÜ 2: Stok Yetersizse (İşte boş sayfa çıkmasını engelleyen kod!)
+            if (dbProduct.Stock < quantity)
+            {
+                TempData["ErrorMessage"] = $"Maalesef stokta yeterli ürün yok! {dbProduct.Name} için mevcut stok: {dbProduct.Stock} adet.";
+                return RedirectToAction("Index");
+            }
+
+            // --- Eğer buraya geldiyse stok yeterlidir, işlemlere devam ---
+            decimal finalPrice = 0;
+
+            // DESEN 1: OBSERVER
+            ProductStockManager stockManager = new ProductStockManager(dbProduct.Name, dbProduct.Stock, 5);
+            stockManager.Attach(new SatinAlmaEmailNotifier());
+            stockManager.Attach(new DepoNotifier());
+
+            stockManager.DecreaseStock(quantity);
+            dbProduct.Stock -= quantity;
+
+            // DESEN 2: COMPOSITE (Ağırlık Toplama)
+            double totalWeightPerUnit = dbProduct.Weight;
+
+            if (dbProduct.ProductType == "Karmasik" && !string.IsNullOrEmpty(dbProduct.Components))
+            {
+                var componentNames = dbProduct.Components.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries).Select(c => c.Trim()).ToList();
+                foreach (var cName in componentNames)
+                {
+                    var compProduct = _context.Products.FirstOrDefault(p => p.Name.ToLower() == cName.ToLower());
+                    if (compProduct != null && compProduct.Stock >= quantity)
+                    {
+                        compProduct.Stock -= quantity;
+                        totalWeightPerUnit += compProduct.Weight;
+                    }
+                }
+            }
+
+            double totalOrderWeight = totalWeightPerUnit * quantity;
+            _context.SaveChanges();
+
+            // DESEN 4 & 5: ADAPTER VE DECORATOR
+            ICargoService cargo;
+            if (cargoCompany == "Aras") cargo = new ArasCargoAdapter();
+            else cargo = new YurticiCargoAdapter();
+
+            if (useInsurance) cargo = new InsuranceDecorator(cargo);
+
+            decimal cargoCost = cargo.CalculatePrice(totalOrderWeight, distance);
+            finalPrice = (dbProduct.Price * quantity) + cargoCost;
+
+            // DESEN 3: STRATEGY
+            OrderContext orderContext = new OrderContext { OrderId = new Random().Next(1000, 9999), TotalAmount = finalPrice };
+            if (paymentMethod == "CreditCard") orderContext.SetPaymentStrategy(new CreditCardPayment("4321-xxxx", "123"));
+            else orderContext.SetPaymentStrategy(new BankTransferPayment("TR00..."));
+
+            orderContext.ProcessPayment();
+
+            // SİPARİŞİ KAYDETME
+            var newOrder = new OrderRecord
+            {
+                CustomerEmail = User.Identity.Name,
+                ProductName = productName,
+                Quantity = quantity,
+                TotalPrice = finalPrice,
+                Status = "Beklemede",
+                OrderDate = DateTime.Now
+            };
+            _context.Orders.Add(newOrder);
+            _context.SaveChanges();
+
+            // Sonuç ekranı için veriler
+            ViewBag.FinalPrice = finalPrice;
+            ViewBag.Order = orderContext;
+            ViewBag.ProductName = productName;
+            ViewBag.Quantity = quantity;
+            ViewBag.CargoInfo = $"Firma: {cargoCompany} | Takip: {cargo.GenerateTrackingNumber()} | Kargo Ücreti: {cargoCost:F2} TL (Ağırlık: {totalOrderWeight} KG, Mesafe: {distance} KM)";
+
+            // SINGLETON LOG
             SystemLogger.GetInstance().LogToDb(HttpContext.RequestServices, $"SİPARİŞ ONAYLANDI: {productName} x {quantity}. Toplam Tutar: {finalPrice} TL. Kargo: {cargoCompany}", User.Identity.Name ?? "System");
 
             return View("OrderResult");
@@ -197,7 +197,7 @@ namespace NYAT_1.Controllers
                 Stock = stock,
                 Price = price,
                 Weight = weight,
-                Components = componentsString
+                Components = componentsString ?? ""
             };
 
             _context.Products.Add(newEntity);
