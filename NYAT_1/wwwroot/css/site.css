@@ -1,22 +1,78 @@
-html {
-  font-size: 14px;
+/* wwwroot/css/site.css */
+
+/* 1. RENK PALETÝMÝZÝ (Deðiþkenler Olarak) TANIMLIYORUZ */
+:root {
+    --palette-dark: #1D2D44; /* En Koyu Ton (Navbar ve Footer için) */
+    --palette-primary: #3E5C76; /* Ana Vurgu Rengi (Baþlýklar, Ana Butonlar) */
+    --palette-light: #F0EBD8; /* En Açýk Ton (Arka plan için yumuþak krem/gri) */
+    --palette-accent: #748CAB; /* Ara Ton (Hover efektleri ve ikincil alanlar) */
+    --palette-danger: #D9534F; /* Kontrast Sýcak Renk (Ýptal, Silme iþlemleri) */
 }
 
-@media (min-width: 768px) {
-  html {
-    font-size: 16px;
-  }
-}
-
-.btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
-}
-
-html {
-  position: relative;
-  min-height: 100%;
-}
-
+/* 2. GENEL GÖRÜNÜM */
 body {
-  margin-bottom: 60px;
+    background-color: var(--palette-light);
+    color: #333333;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* 3. ÜST MENÜ (NAVBAR) ÖZELLEÞTÝRMESÝ */
+.custom-navbar {
+    background-color: var(--palette-dark) !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+    .custom-navbar .navbar-brand,
+    .custom-navbar .nav-link {
+        color: #ffffff !important;
+        font-weight: 500;
+        transition: color 0.3s ease;
+    }
+
+        .custom-navbar .nav-link:hover {
+            color: var(--palette-accent) !important;
+        }
+
+/* 4. BUTON ÖZELLEÞTÝRMELERÝ */
+.btn-primary {
+    background-color: var(--palette-primary);
+    border-color: var(--palette-primary);
+}
+
+    .btn-primary:hover {
+        background-color: var(--palette-dark);
+        border-color: var(--palette-dark);
+    }
+
+.btn-success {
+    background-color: #3E5C76; /* Temaya uymasý için yeþili primary tonuna çektik */
+    border-color: #3E5C76;
+}
+
+    .btn-success:hover {
+        background-color: var(--palette-dark);
+        border-color: var(--palette-dark);
+    }
+
+.btn-danger {
+    background-color: var(--palette-danger);
+    border-color: var(--palette-danger);
+}
+
+/* 5. KART VE KUTU ÖZELLEÞTÝRMELERÝ */
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+}
+
+.card-header.bg-primary,
+.card-header.bg-success {
+    background-color: var(--palette-primary) !important;
+    color: white;
+    border-radius: 12px 12px 0 0 !important;
+}
+
+.jumbotron {
+    background: linear-gradient(135deg, var(--palette-dark) 0%, var(--palette-primary) 100%) !important;
 }

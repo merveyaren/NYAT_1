@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 
 namespace NYAT_1.Data
@@ -26,21 +25,20 @@ namespace NYAT_1.Data
             // 2. TEST KULLANICILARINI OLUŞTURMA VE ROL ATAMA
 
             // --- YÖNETİCİ (ADMIN) HESABI ---
-            var adminUser = new IdentityUser { UserName = "admin@lojistik.com", Email = "admin@lojistik.com", EmailConfirmed = true };
-            if (userManager.Users.All(u => u.UserName != adminUser.UserName))
+            if (await userManager.FindByEmailAsync("admin@lojistik.com") == null)
             {
-                // Kullanıcıyı oluştur (Şifre kuralı: Büyük harf, küçük harf, rakam ve özel karakter içermeli)
+                var adminUser = new IdentityUser { UserName = "admin@lojistik.com", Email = "admin@lojistik.com", EmailConfirmed = true };
                 var createAdmin = await userManager.CreateAsync(adminUser, "Admin123!");
                 if (createAdmin.Succeeded)
                 {
-                    await userManager.AddToRoleAsync(adminUser, "Admin"); // Rolü ver
+                    await userManager.AddToRoleAsync(adminUser, "Admin");
                 }
             }
 
             // --- DEPO GÖREVLİSİ HESABI ---
-            var depoUser = new IdentityUser { UserName = "depo@lojistik.com", Email = "depo@lojistik.com", EmailConfirmed = true };
-            if (userManager.Users.All(u => u.UserName != depoUser.UserName))
+            if (await userManager.FindByEmailAsync("depo@lojistik.com") == null)
             {
+                var depoUser = new IdentityUser { UserName = "depo@lojistik.com", Email = "depo@lojistik.com", EmailConfirmed = true };
                 var createDepo = await userManager.CreateAsync(depoUser, "Depo123!");
                 if (createDepo.Succeeded)
                 {
@@ -49,13 +47,24 @@ namespace NYAT_1.Data
             }
 
             // --- KURYE HESABI ---
-            var kuryeUser = new IdentityUser { UserName = "kurye@lojistik.com", Email = "kurye@lojistik.com", EmailConfirmed = true };
-            if (userManager.Users.All(u => u.UserName != kuryeUser.UserName))
+            if (await userManager.FindByEmailAsync("kurye@lojistik.com") == null)
             {
+                var kuryeUser = new IdentityUser { UserName = "kurye@lojistik.com", Email = "kurye@lojistik.com", EmailConfirmed = true };
                 var createKurye = await userManager.CreateAsync(kuryeUser, "Kurye123!");
                 if (createKurye.Succeeded)
                 {
                     await userManager.AddToRoleAsync(kuryeUser, "Kurye");
+                }
+            }
+
+            // --- MÜŞTERİ HESABI (YENİ EKLENDİ) ---
+            if (await userManager.FindByEmailAsync("musteri@lojistik.com") == null)
+            {
+                var musteriUser = new IdentityUser { UserName = "musteri@lojistik.com", Email = "musteri@lojistik.com", EmailConfirmed = true };
+                var createMusteri = await userManager.CreateAsync(musteriUser, "Musteri123!");
+                if (createMusteri.Succeeded)
+                {
+                    await userManager.AddToRoleAsync(musteriUser, "Musteri");
                 }
             }
         }

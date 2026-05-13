@@ -1,55 +1,58 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - NYAT_1</title>
+    <title>@ViewData["Title"] - LojiTech</title>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
-    <link rel="stylesheet" href="~/NYAT_1.styles.css" asp-append-version="true" />
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">NYAT_1</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
+        <nav class="navbar navbar-expand-sm navbar-toggleable-sm custom-navbar border-bottom mb-4">
+            <div class="container">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <i class="fas fa-shipping-fast" style="color: var(--palette-accent);"></i> LojiTech
+                </a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
-                    <span class="navbar-toggler-icon"></span>
+                    <span class="navbar-toggler-icon" style="filter: invert(1);"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Ana Sayfa</a>
+                            <a class="nav-link" asp-area="" asp-controller="Home" asp-action="Index">
+                                <i class="fas fa-home"></i> Ana Sayfa
+                            </a>
                         </li>
-
-                        @* Sadece sisteme giriş yapmış kullanıcılar menüleri görmeye başlar *@
                         @if (User.Identity.IsAuthenticated)
                         {
-                            @* 1. MÜŞTERİ VE ADMİN MENÜSÜ *@
-                            @if (User.IsInRole("Admin") || User.IsInRole("Musteri"))
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Order" asp-action="Index">
+                                    <i class="fas fa-shopping-cart"></i> Sipariş Oluştur
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" asp-area="" asp-controller="Order" asp-action="MyOrders">
+                                    <i class="fas fa-box-open"></i> Siparişlerim
+                                </a>
+                            </li>
+
+                            @if (User.IsInRole("DepoGorevlisi") || User.IsInRole("Admin"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-primary font-weight-bold" asp-area="" asp-controller="Order" asp-action="Index">📦 Sipariş Oluştur</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-success font-weight-bold" asp-area="" asp-controller="Order" asp-action="MyOrders">🛒 Siparişlerim</a>
+                                    <a class="nav-link" asp-area="" asp-controller="Order" asp-action="StokYonetimi">
+                                        <i class="fas fa-warehouse"></i> Stok Yönetimi
+                                    </a>
                                 </li>
                             }
-
-                            @* 2. DEPO GÖREVLİSİ VE ADMİN MENÜSÜ *@
-                            @if (User.IsInRole("Admin") || User.IsInRole("DepoGorevlisi"))
+                            @if (User.IsInRole("Kurye") || User.IsInRole("Admin"))
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link text-warning font-weight-bold" asp-area="" asp-controller="Order" asp-action="StokYonetimi">🏭 Stok Yönetimi</a>
-                                </li>
-                            }
-
-                            @* 3. KURYE VE ADMİN MENÜSÜ *@
-                            @if (User.IsInRole("Admin") || User.IsInRole("Kurye"))
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link text-info font-weight-bold" asp-area="" asp-controller="Order" asp-action="KargoDurumu">🚚 Kurye Paneli</a>
+                                    <a class="nav-link" asp-area="" asp-controller="Order" asp-action="KargoDurumu">
+                                        <i class="fas fa-truck"></i> Kurye Paneli
+                                    </a>
                                 </li>
                             }
                         }
@@ -59,17 +62,19 @@
             </div>
         </nav>
     </header>
+
     <div class="container">
         <main role="main" class="pb-3">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted">
+    <footer class="border-top footer text-center mt-5 py-3" style="background-color: var(--palette-dark); color: #888 !important; position: absolute; bottom: 0; width: 100%;">
         <div class="container">
-            &copy; 2026 - NYAT_1 - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2026 - LojiTech Yazılım & Lojistik Sistemleri - NYAT Projesi
         </div>
     </footer>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
