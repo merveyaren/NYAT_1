@@ -6,7 +6,7 @@
 <div class="container mt-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="text-info"><i class="fas fa-truck"></i> Kurye Operasyon Paneli</h2>
-        <span class="badge badge-warning p-2">📦 State (Durum) Yönetimi</span>
+        <span class="badge badge-warning p-2">State (Durum) Yönetimi</span>
     </div>
 
     <div class="card shadow-sm border-0">
@@ -33,7 +33,10 @@
                                 <td class="align-middle">@order.CustomerEmail</td>
                                 <td class="align-middle">@order.ProductName (x@order.Quantity)</td>
                                 <td class="align-middle">
-                                    <span class="badge @(order.Status == "Beklemede" ? "badge-secondary" : order.Status == "Kargoda" ? "badge-primary" : order.Status == "Teslim Edildi" ? "badge-success" : order.Status == "İptal Edildi" ? "badge-danger" : "badge-info") p-2">
+                                    <span class="status-badge @(order.Status == "Beklemede" ? "status-pending" :
+                                                                                                                   order.Status == "Kargoda" ? "status-shipped" :
+                                                                                                                   order.Status == "İptal Edildi" ? "status-returned" :
+                                                                                                                   order.Status == "Hazırlanıyor" ? "status-preparing" : "status-approved")">
                                         @order.Status
                                     </span>
                                 </td>
@@ -69,7 +72,5 @@
         </div>
     </div>
 
-    <div class="alert alert-secondary mt-3 small">
-        <i class="fas fa-info-circle"></i> <b>Sistem Notu:</b> Yapılan her durum güncellemesi (State değişimi) arka planda <strong>Singleton</strong> deseni kullanılarak oluşturulan SystemLogger nesnesi üzerinden kayıt altına alınmaktadır.
-    </div>
+   
 </div>

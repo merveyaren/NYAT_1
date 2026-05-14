@@ -14,8 +14,14 @@ body {
     background-color: var(--palette-light);
     color: #333333;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    height: 100%;
 }
-
+.main-content {
+    flex: 1 0 auto; /* Ýçerik az olsa bile footer'ý en aþaðý iter */
+}
+footer {
+    flex-shrink: 0; /* Footer'ýn ezilmesini engeller */
+}
 /* 3. ÜST MENÜ (NAVBAR) ÖZELLEÞTÝRMESÝ */
 .custom-navbar {
     background-color: var(--palette-dark) !important;
@@ -76,3 +82,33 @@ body {
 .jumbotron {
     background: linear-gradient(135deg, var(--palette-dark) 0%, var(--palette-primary) 100%) !important;
 }
+/* Durum Etiketleri Ýçin Genel Stil */
+.status-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-weight: bold;
+    font-size: 0.85rem;
+    display: inline-block;
+    color: #fff !important; /* Yazý rengini beyaz tutup arka planý renklendireceðiz */
+}
+/* Farklý Durumlar Ýçin Renkler */
+.status-pending {
+    background-color: #f39c12;
+}
+/* Turuncu - Beklemede */
+.status-approved {
+    background-color: #2ecc71;
+}
+/* Yeþil - Onaylandý */
+.status-preparing {
+    background-color: #3498db;
+}
+/* Mavi - Hazýrlanýyor */
+.status-shipped {
+    background-color: #9b59b6;
+}
+/* Mor - Kargolandý */
+.status-returned {
+    background-color: #e74c3c;
+}
+/* Kýrmýzý - Ýade Edildi */

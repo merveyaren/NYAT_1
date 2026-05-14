@@ -41,7 +41,10 @@
                                 <td><strong>@order.ProductName</strong></td>
                                 <td>@order.Quantity</td>
                                 <td>
-                                    <span class="badge @(order.Status == "Beklemede" ? "badge-secondary" : order.Status == "Kargoda" ? "badge-primary" : order.Status == "İptal Edildi" ? "badge-danger" : "badge-info")">
+                                    <span class="status-badge @(order.Status == "Beklemede" ? "status-pending" :
+                                                                                                              order.Status == "Kargoda" ? "status-shipped" :
+                                                                                                              order.Status == "İptal Edildi" ? "status-returned" :
+                                                                                                              order.Status == "Hazırlanıyor" ? "status-preparing" : "status-approved")">
                                         @order.Status
                                     </span>
                                 </td>
