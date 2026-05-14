@@ -3,13 +3,14 @@ using System.Collections.Generic;
 
 namespace NYAT_1.Patterns.Behavioral.Observer
 {
+    // Subject (Yayıncı/Konu) sınıfı: Stok durumunu takip eder ve değişiklikleri abonelere bildirir.
     public class ProductStockManager
     {
         public string ProductName { get; private set; }
         private int _stock;
-        private readonly int _threshold; // Uyarı sınırımız (Eşik değer)
+        private readonly int _threshold; // Otomatik aksiyonu tetikleyecek sınır (Eşik) değer.
 
-        // Abone listemiz (Polimorfik bir liste, arayüz tipinde tutuyoruz)
+        // Polimorfizm kullanılarak abonelerin tutulduğu liste. (Sınıflara değil, arayüze bağımlıyız).
         private List<IStockObserver> _observers = new List<IStockObserver>();
 
         public ProductStockManager(string productName, int initialStock, int threshold)
@@ -19,31 +20,31 @@ namespace NYAT_1.Patterns.Behavioral.Observer
             _threshold = threshold;
         }
 
-        // Sisteme yeni bir bildirimci eklemek için (Subscribe)
+        // Sisteme yeni bir gözlemci (bildirim kanalı) eklemek için kullanılır (Attach/Subscribe).
         public void Attach(IStockObserver observer)
         {
             _observers.Add(observer);
         }
 
-        // Stok düşürme işlemi
+        // Sipariş geçildikçe stok miktarını düşüren iş mantığı.
         public void DecreaseStock(int amount)
         {
             _stock -= amount;
             Console.WriteLine($"{ProductName} stoğundan {amount} adet düşüldü. Mevcut Stok: {_stock}");
 
-            // Eğer stok kritik seviyenin altına düştüyse haber sal
+            // Stok kritik eşiğin altına indiyse, insan müdahalesi olmadan sistemi uyar.
             if (_stock < _threshold)
             {
                 NotifyAllObservers();
             }
         }
 
-        // Sadece kendi içinden çağrılan bildirim metodu
+        // Kapsülleme (Encapsulation) gereği dışarıdan çağrılamayan, sadece sınıf içi bildirim metodu.
         private void NotifyAllObservers()
         {
             foreach (var observer in _observers)
             {
-                // Kimin nasıl haber verdiğini bilmiyoruz, sadece Update diyoruz
+                // Ana sistem, kimin e-posta kimin bildirim attığını bilmez. Sadece "Update" komutu gönderir.
                 observer.Update(ProductName, _stock);
             }
         }

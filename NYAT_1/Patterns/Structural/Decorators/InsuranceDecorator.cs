@@ -2,6 +2,7 @@
 
 namespace NYAT_1.Patterns.Structural.Decorators
 {
+    // Concrete Decorator (Somut Sarmalayıcı): Siparişin kargo sürecine "Sigortalı Taşıma" yeteneği kazandırır.
     public class InsuranceDecorator : CargoDecorator
     {
         public InsuranceDecorator(ICargoService cargoService) : base(cargoService)
@@ -10,17 +11,18 @@ namespace NYAT_1.Patterns.Structural.Decorators
 
         public override decimal CalculatePrice(double weight, double distance)
         {
-            // Önce sarmaladığı kargonun (örneğin Aras) kendi fiyatını hesaplatıyoruz
+            // Delegation ile içteki (sarmalanan) bileşenin fiyatını hesaplatıyoruz.
             decimal basePrice = base.CalculatePrice(weight, distance);
 
-            // Sonra üzerine 50 TL sabit sigorta bedeli ekliyoruz
+            // Hesaplanan mevcut fiyata 50 TL sabit sigorta işlem bedelini ekliyoruz.
             return basePrice + 50m;
         }
 
         public override string GenerateTrackingNumber()
         {
-            // Takip numarasının sonuna Sigorta (INS) etiketi ekleyebiliriz
-            return base.GenerateTrackingNumber() + "-INS";
+            // Decorator sadece matematiksel hesaplama yapmaz; aynı zamanda string metodolojilerini de 
+            // ezip (override), mevcut davranışın yapısını (örneğin kargo takip kodunu) modifiye edebilir.
+            return base.GenerateTrackingNumber() + "-INS"; // INS: Insurance (Sigorta) takısı
         }
     }
 }

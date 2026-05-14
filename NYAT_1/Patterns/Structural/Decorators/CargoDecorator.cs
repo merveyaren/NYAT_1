@@ -2,9 +2,13 @@
 
 namespace NYAT_1.Patterns.Structural.Decorators
 {
+    // Base Decorator (Temel Sarmalayıcı): Decorator deseninin merkez sınıfı.
+    // İş mantığını statik alt sınıflar (Kalıtım/Inheritance) ile şişirmek yerine, nesnelere çalışma zamanında 
+    // (runtime) dinamik özellikler eklemek (Composition/Birleştirme) için kullanılır.
     public abstract class CargoDecorator : ICargoService
     {
-        // Sarmaladığımız (içine aldığımız) asıl kargo nesnesi
+        // Kapsüllenmiş (Wrapped) asıl bileşen. 
+        // ICargoService arayüzünü uygulayan herhangi bir kargo sınıfını (Aras, Yurtici vb.) tutabilir.
         protected ICargoService _cargoService;
 
         public CargoDecorator(ICargoService cargoService)
@@ -12,7 +16,7 @@ namespace NYAT_1.Patterns.Structural.Decorators
             _cargoService = cargoService;
         }
 
-        // Varsayılan olarak, gelen isteği içindeki nesneye iletiyor
+        // Delegation (Temsil): Metot çağrıları varsayılan olarak sarmalanan asıl nesneye iletilir.
         public virtual decimal CalculatePrice(double weight, double distance)
         {
             return _cargoService.CalculatePrice(weight, distance);

@@ -5,14 +5,16 @@ using System.Collections.Generic;
 
 namespace NYAT_1.Patterns.Creational.Factory
 {
+    // Creational Pattern (Yaratımsal Desen): Nesne üretim mantığını istemci (Client) kodundan soyutlar.
     public class ProductFactory
     {
-        // Şartnamedeki "if-else kullanmayın" kuralını aşmak için
-        // Tipi (string) alıp, geriye IProduct üreten bir metot (Func) döndüren Sözlük kullanıyoruz.
+        // OCP (Open/Closed Principle) ilkesine uymak ve "if-else / switch-case" karmaşasını önlemek için 
+        // Dictionary (Sözlük) tabanlı dinamik bir Factory haritası (Registry) kullanılmıştır.
         private readonly Dictionary<string, Func<IProduct>> _productCreators;
 
         public ProductFactory()
         {
+            // Yeni bir ürün tipi eklendiğinde mevcut metotları değiştirmek yerine sadece buraya kayıt atılır.
             _productCreators = new Dictionary<string, Func<IProduct>>(StringComparer.OrdinalIgnoreCase)
             {
                 { "Basit", () => new BasitUrun() },
@@ -20,15 +22,17 @@ namespace NYAT_1.Patterns.Creational.Factory
             };
         }
 
+        // İstemcinin (örneğin Controller'ın) nesnenin nasıl üretildiğini bilmeden sadece arayüz (IProduct) talep ettiği metot.
         public IProduct CreateProduct(string productType)
         {
-            // Eğer sözlükte bu tip varsa (örn: "Basit"), if-else yapmadan direkt üret!
+            // Eğer talep edilen tip sözlükte kayıtlıysa, nesne doğrudan bellekten (delegate aracılığıyla) anında üretilir.
             if (_productCreators.TryGetValue(productType, out var creator))
             {
                 return creator();
             }
 
-            throw new ArgumentException("Hata: Geçersiz ürün tipi istendi!");
+            // Desteklenmeyen bir tip istenirse sistemin çökmesini engellemek için kontrollü hata fırlatılır.
+            throw new ArgumentException($"Hata: '{productType}' geçersiz bir ürün tipidir!");
         }
     }
 }

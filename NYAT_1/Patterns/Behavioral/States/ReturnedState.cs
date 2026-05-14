@@ -1,9 +1,11 @@
-﻿using NYAT_1.Core.Interfaces;
+﻿using System;
+using NYAT_1.Core.Interfaces;
 using NYAT_1.Models;
-using System;
 
 namespace NYAT_1.Patterns.Behavioral.States
 {
+    // Concrete State (Somut Durum): Siparişin "İade Edildi" olduğu son durum (Terminal State).
+    // Bu aşamadan sonra sipariş yaşam döngüsünü tamamlar ve üzerinde hiçbir state değişikliği yapılamaz.
     public class ReturnedState : IOrderState
     {
         public void Approve(OrderContext context) => throw new InvalidOperationException("İade edilen sipariş onaylanamaz.");

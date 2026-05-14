@@ -15,18 +15,22 @@ using NYAT_1.Patterns.Structural.Decorators;
 
 namespace NYAT_1.Controllers
 {
+    // MVC Mimarisi: Controller (Denetleyici) Katmanı. 
+    // Kullanıcı isteklerini karşılar, Modelleri işler ve ilgili View'a (Görünüme) aktarır.
     public class OrderController : Controller
     {
         private readonly ApplicationDbContext _context;
 
+        // Dependency Injection (Bağımlılıkların Enjeksiyonu): 
+        // Veritabanı context'i dışarıdan enjekte edilerek (IoC Container üzerinden) sınıflar arası gevşek bağlılık (Loose Coupling) sağlanmıştır.
         public OrderController(ApplicationDbContext context)
         {
             _context = context;
         }
 
-        // --------------------------------------------------------
+        // ========================================================
         // 1. MÜŞTERİ İŞLEMLERİ
-        // --------------------------------------------------------
+        // ========================================================
 
         [Authorize(Roles = "Musteri, Admin")]
         public IActionResult Index()
@@ -49,32 +53,36 @@ namespace NYAT_1.Controllers
         {
             var dbProduct = _context.Products.FirstOrDefault(p => p.Name == productName);
 
-            // HATA KONTROLÜ 1: Ürün Bulunamadıysa
+            // Guard Clause (Erken Çıkış) Prensibi 1: Geçersiz ürün kontrolü
             if (dbProduct == null)
             {
                 TempData["ErrorMessage"] = "Lütfen geçerli bir ürün seçin.";
                 return RedirectToAction("Index");
             }
 
-            // HATA KONTROLÜ 2: Stok Yetersizse (İşte boş sayfa çıkmasını engelleyen kod!)
+            // Guard Clause (Erken Çıkış) Prensibi 2: Stok yetersizliği kontrolü. 
+            // Sistemin tutarsız duruma (boş sayfa veya eksi stok) düşmesi engellenir.
             if (dbProduct.Stock < quantity)
             {
                 TempData["ErrorMessage"] = $"Maalesef stokta yeterli ürün yok! {dbProduct.Name} için mevcut stok: {dbProduct.Stock} adet.";
                 return RedirectToAction("Index");
             }
 
-            // --- Eğer buraya geldiyse stok yeterlidir, işlemlere devam ---
+            // --- İş Kuralları (Business Logic) Başlangıcı ---
             decimal finalPrice = 0;
 
-            // DESEN 1: OBSERVER
+            // 1. BEHAVIORAL PATTERN: OBSERVER (Gözlemci)
+            // Stok yöneticisi (Subject) oluşturulur ve ilgili departmanlar (Concrete Observers) sisteme abone edilir.
             ProductStockManager stockManager = new ProductStockManager(dbProduct.Name, dbProduct.Stock, 5);
             stockManager.Attach(new SatinAlmaEmailNotifier());
             stockManager.Attach(new DepoNotifier());
 
+            // Stok düşüldüğünde eşik değer aşılırsa abonelere otomatik "Update" tetiklenir.
             stockManager.DecreaseStock(quantity);
             dbProduct.Stock -= quantity;
 
-            // DESEN 2: COMPOSITE (Ağırlık Toplama)
+            // 2. STRUCTURAL PATTERN: COMPOSITE ALTYAPISI (Parça-Bütün İlişkisi)
+            // Karmaşık ürünlerin içindeki alt bileşenlerin (Leaf) ağırlıkları iteratif olarak ana ürüne (Composite) eklenir.
             double totalWeightPerUnit = dbProduct.Weight;
 
             if (dbProduct.ProductType == "Karmasik" && !string.IsNullOrEmpty(dbProduct.Components))
@@ -85,7 +93,7 @@ namespace NYAT_1.Controllers
                     var compProduct = _context.Products.FirstOrDefault(p => p.Name.ToLower() == cName.ToLower());
                     if (compProduct != null && compProduct.Stock >= quantity)
                     {
-                        compProduct.Stock -= quantity;
+                        compProduct.Stock -= quantity; // Alt bileşenin de stoğu düşülür
                         totalWeightPerUnit += compProduct.Weight;
                     }
                 }
@@ -94,24 +102,30 @@ namespace NYAT_1.Controllers
             double totalOrderWeight = totalWeightPerUnit * quantity;
             _context.SaveChanges();
 
-            // DESEN 4 & 5: ADAPTER VE DECORATOR
+            // 3. STRUCTURAL PATTERNS: ADAPTER (Uyumlaştırıcı) & DECORATOR (Sarmalayıcı)
             ICargoService cargo;
+
+            // Adapter: Farklı kargo firmalarının (Adaptee) uyumsuz metotlarını ortak bir arayüzde (ICargoService - Target) standartlaştırır.
             if (cargoCompany == "Aras") cargo = new ArasCargoAdapter();
             else cargo = new YurticiCargoAdapter();
 
+            // Decorator: Kalıtım (Inheritance) kullanmadan, çalışma zamanında (Runtime) nesneye "Sigorta" özelliği sarmalanarak eklenir.
             if (useInsurance) cargo = new InsuranceDecorator(cargo);
 
+            // Fiyat hesaplaması dinamik sarmalayıcı zincirinden geçerek sonuçlanır.
             decimal cargoCost = cargo.CalculatePrice(totalOrderWeight, distance);
             finalPrice = (dbProduct.Price * quantity) + cargoCost;
 
-            // DESEN 3: STRATEGY
+            // 4. BEHAVIORAL PATTERN: STRATEGY (Strateji)
+            // Bağlam (Context) nesnesi oluşturulur. İstemcinin seçimine göre ödeme algoritması çalışma zamanında değiştirilir.
             OrderContext orderContext = new OrderContext { OrderId = new Random().Next(1000, 9999), TotalAmount = finalPrice };
+
             if (paymentMethod == "CreditCard") orderContext.SetPaymentStrategy(new CreditCardPayment("4321-xxxx", "123"));
             else orderContext.SetPaymentStrategy(new BankTransferPayment("TR00..."));
 
-            orderContext.ProcessPayment();
+            orderContext.ProcessPayment(); // Seçilen strateji (algoritma) polimorfik olarak çalıştırılır.
 
-            // SİPARİŞİ KAYDETME
+            // --- Veritabanı Kayıt İşlemleri (Persistence) ---
             var newOrder = new OrderRecord
             {
                 CustomerEmail = User.Identity.Name,
@@ -124,14 +138,15 @@ namespace NYAT_1.Controllers
             _context.Orders.Add(newOrder);
             _context.SaveChanges();
 
-            // Sonuç ekranı için veriler
+            // View (Arayüz) katmanına veri taşıma işlemi
             ViewBag.FinalPrice = finalPrice;
             ViewBag.Order = orderContext;
             ViewBag.ProductName = productName;
             ViewBag.Quantity = quantity;
             ViewBag.CargoInfo = $"Firma: {cargoCompany} | Takip: {cargo.GenerateTrackingNumber()} | Kargo Ücreti: {cargoCost:F2} TL (Ağırlık: {totalOrderWeight} KG, Mesafe: {distance} KM)";
 
-            // SINGLETON LOG
+            // 5. CREATIONAL PATTERN: SINGLETON
+            // Thread-safe Singleton üzerinden bellek sızıntısı yaratmadan güvenli loglama işlemi yapılır.
             SystemLogger.GetInstance().LogToDb(HttpContext.RequestServices, $"SİPARİŞ ONAYLANDI: {productName} x {quantity}. Toplam Tutar: {finalPrice} TL. Kargo: {cargoCompany}", User.Identity.Name ?? "System");
 
             return View("OrderResult");
@@ -146,6 +161,7 @@ namespace NYAT_1.Controllers
             {
                 try
                 {
+                    // State tasarımı öncesi basit durum kontrolü. (Gerçek state entegrasyonu Kurye paneli ve detaylarında çalışır).
                     if (dbOrder.Status == "Kargoda" || dbOrder.Status == "Teslim Edildi")
                     {
                         throw new InvalidOperationException("Kargodaki ürün iptal edilemez, sadece iade sürecine geçebilirsiniz!");
@@ -155,7 +171,6 @@ namespace NYAT_1.Controllers
                     _context.SaveChanges();
                     TempData["SuccessMessage"] = "Siparişiniz başarıyla iptal edildi.";
 
-                    // SINGLETON LOG
                     SystemLogger.GetInstance().LogToDb(HttpContext.RequestServices, $"SİPARİŞ İPTAL EDİLDİ: #{dbOrder.Id}", User.Identity.Name ?? "System");
                 }
                 catch (Exception ex)
@@ -166,9 +181,9 @@ namespace NYAT_1.Controllers
             return RedirectToAction("MyOrders");
         }
 
-        // --------------------------------------------------------
+        // ========================================================
         // 2. DEPO İŞLEMLERİ
-        // --------------------------------------------------------
+        // ========================================================
 
         [Authorize(Roles = "DepoGorevlisi, Admin")]
         public IActionResult StokYonetimi()
@@ -182,7 +197,8 @@ namespace NYAT_1.Controllers
         [HttpPost]
         public IActionResult AddNewProduct(string productType, string productName, int stock, decimal price, double weight, List<string> selectedComponents)
         {
-            // DESEN 6: FACTORY METHOD
+            // 6. CREATIONAL PATTERN: FACTORY METHOD
+            // İstemci (Controller), ürün nesnesinin nasıl üretileceğini bilmez. Sorumluluk Factory sınıfına devredilir (SoC).
             ProductFactory factory = new ProductFactory();
             IProduct logicalProduct = factory.CreateProduct(productType);
 
@@ -203,7 +219,6 @@ namespace NYAT_1.Controllers
             _context.Products.Add(newEntity);
             _context.SaveChanges();
 
-            // SINGLETON LOG (Veritabanına Kayıt)
             SystemLogger.GetInstance().LogToDb(HttpContext.RequestServices, $"YENİ ÜRÜN EKLENDİ: {productName} (Tip: {productType}, Stok: {stock}, Fiyat: {price} TL)", User.Identity.Name ?? "System");
 
             return RedirectToAction("StokYonetimi");
@@ -220,15 +235,14 @@ namespace NYAT_1.Controllers
                 _context.SaveChanges();
             }
 
-            // SINGLETON LOG (Veritabanına Kayıt)
             SystemLogger.GetInstance().LogToDb(HttpContext.RequestServices, $"STOK ARTTIRILDI: {productName} (+{amount} adet)", User.Identity.Name ?? "System");
 
             return RedirectToAction("StokYonetimi");
         }
 
-        // --------------------------------------------------------
-        // 3. KURYE İŞLEMLERİ (State ve Singleton Deseni)
-        // --------------------------------------------------------
+        // ========================================================
+        // 3. KURYE İŞLEMLERİ
+        // ========================================================
 
         [Authorize(Roles = "Kurye, Admin")]
         public IActionResult KargoDurumu()
@@ -250,7 +264,7 @@ namespace NYAT_1.Controllers
 
                 _context.SaveChanges();
 
-                // DESEN: SINGLETON - Sistem genelindeki tek log nesnesini çağır ve veritabanına yaz!
+                // Sistem genelindeki tek log nesnesini çağır ve veritabanına yaz.
                 SystemLogger.GetInstance().LogToDb(HttpContext.RequestServices, $"Sipariş #{dbOrder.Id} durumu güncellendi: '{oldStatus}' -> '{newStatus}'", User.Identity.Name ?? "System");
             }
 
